@@ -1,0 +1,13 @@
+name: guitarid
+dependencies:
+  - python=3.11
+  - matplotlib
+  - numpy
+  - requests
+  - pip
+  - pip:
+      - torch
+      - torchvision
+      - torchaudio
+      - onnx
+      - onnxscript
