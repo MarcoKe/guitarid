@@ -3,22 +3,14 @@ import requests
 import json
 
 import urllib.request
-arr = outputTensor.data;
-          function argMax(array) {
-        return array.map((x, i) => [x, i]).reduce((r, a) => (a[0] > r[0] ? a : r))[1];
-      }
-          index = arr.indexOf(Math.max(...arr));
-          console.log(index);
-          class_name = class_names[index];
-          console.log(class_name);
-                    document.getElementById('output').textContent = `Model Output: ${class_name} (${outputTensor.data})`;
 
-
+with open("credentials.json") as f:
+    credentials = json.load(f)
 
 def find_images(query):
     # replace with your own CSE ID and API key
-    cse_id = "c1d8bbf3f47a54b00"
-    api_key = "AIzaSyAkXXtV0Os2WoFZNlNUBNoII_jMudFG1Ik"
+    cse_id = credentials['cse_id']
+    api_key = credentials['api_key']
 
     # 1, 11, 21, 31, 41, 51, 61, 71, 81, 91
     for i in range(10):
@@ -79,6 +71,6 @@ def save_images(query):
                 print(f"couldnt get {item['link']}")
 
 
-query = "Ibanez RG2550"
+query = "Fender Player Telecaster"
 find_images(query)
 save_images(query)
