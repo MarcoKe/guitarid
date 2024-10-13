@@ -144,8 +144,25 @@
       console.log("mydata");
       console.log(myData, img.width, img.height);
 
+      
+
+      // floatData = new Float32Array(myData);
+
+      // for (let i = 0; i < floatData.length; i++) {
+      //   floatData[i] = floatData[i] / 255.0;
+      // }
+
+      // console.log(floatData);
+
       // Create a canvas to draw the image
-      const inputTensor = await ort.Tensor.fromImage(myData, options = {tensorFormat: "RGB"});
+      const inputTensor = await ort.Tensor.fromImage(myData, options = {
+        tensorFormat: "RGB",
+        // norm: {
+        // mean: [0.485, 0.456, 0.406],  // Normalization mean values for RGB
+        // bias: [0.229, 0.224, 0.225],  // Normalization bias values (standard deviation)
+        // },
+      });
+
       // console.log(inputTensor);
       // const imageHTML = inputTensor.toImageData();
       // console.log(imageHTML);
@@ -158,7 +175,7 @@
 
       // Append the canvas to the DOM for visualization
       // document.body.appendChild(canvas2);
-
+      console.log(inputTensor);
       return inputTensor;
     }
 
