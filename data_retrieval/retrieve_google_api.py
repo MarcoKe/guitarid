@@ -71,6 +71,6 @@ def save_images(query):
                 print(f"couldnt get {item['link']}")
 
 
-query = "Fender Player Telecaster"
+query = "Jackson Soloist SL2"
 find_images(query)
 save_images(query)

@@ -118,7 +118,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 ###
 
 model = models.mobilenet_v2(pretrained=True)
-model.classifier[1] = nn.Sequential(nn.Linear(in_features=model.classifier[1].in_features, out_features=2), nn.Softmax())
+model.classifier[1] = nn.Sequential(nn.Linear(in_features=model.classifier[1].in_features, out_features=5), nn.Softmax())
 
 
 criterion = nn.CrossEntropyLoss()
