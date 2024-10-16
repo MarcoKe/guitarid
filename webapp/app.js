@@ -1,6 +1,6 @@
 let session;
 
-const classNames = ['Fender Player Telecaster', 'Gibson Les Paul Standard 50s', 'Ibanez RG370DX', 'Jackson Soloist SL2', 'fender player stratocaster'];
+const classNames = ['Fender Player Stratocaster', 'Fender Player Telecaster', 'Gibson Les Paul Standard 50s', 'Ibanez RG370DX', 'Ibanez S6570SK', 'Jackson Soloist SL2', 'PRS SE Custom 24'];
 const modelOutputName = 'classifier_1';
 
 async function initializeSession() {
