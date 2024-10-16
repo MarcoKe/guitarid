@@ -4,10 +4,10 @@ from torchvision import transforms
 from PIL import Image
 
 # Load the ONNX model
-ort_session = ort.InferenceSession('guitarid_model_v0.0.1.onnx')
+ort_session = ort.InferenceSession('../guitarid_model_v0.0.1.onnx')
 
 # Load the same image for comparison
-img = Image.open('guitar_dataset/val/Ibanez RG370DX/59.jpg')
+img = Image.open('../guitar_dataset/val/Ibanez RG370DX/59.jpg')
 
 # Preprocessing
 preprocess = transforms.Compose([
