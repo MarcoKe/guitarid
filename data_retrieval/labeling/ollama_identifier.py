@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 system_prompt_path = "data_retrieval/labeling/ollama_system_prompt_ibanez.txt"
 valid_series_path = "data_retrieval/labeling/valid_series_ibanez.txt"
 ollama_model = "llama3.1"
-ollama_client = ollama.Client(host='http://localhost:11434')
 
 
 with open(system_prompt_path, "r") as f:
