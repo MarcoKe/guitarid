@@ -11,3 +11,5 @@ dependencies:
       - torchaudio
       - onnx
       - onnxscript
+      - ollama
+      - beautiful-soup
