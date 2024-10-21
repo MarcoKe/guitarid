@@ -81,10 +81,13 @@ def get_label(text: str) -> json or None:
     :return: label
     """
     label = get_llm_response(text)
+    label['model'] = label['model'].upper()
 
     # sanity check
     if not exists_in_wiki(label['model']):
         label = get_llm_response(text)
+        label['model'] = label['model'].upper()
+
         if not exists_in_wiki(label['model']):
             return None # give up after trying twice
 
