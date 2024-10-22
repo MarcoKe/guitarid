@@ -1,5 +1,5 @@
 import json
-
+from data_retrieval.labeling.ollama_identifier import identifiers
 
 class GuitarIdentifier():
     def __init__(self, data_path = "data_retrieval/brand_data"):
@@ -8,21 +8,27 @@ class GuitarIdentifier():
             brand_data = json.load(f)
         self.brands, self.brand_synonyms = brand_data["brands"], brand_data["synonyms"]
         self.brands.sort(key=lambda x: -len(x))
+        a, b = self.brands.index('Fender'), self.brands.index('Squier') # make sure squier occurs before fender
+        self.brands[a], self.brands[b] = self.brands[b], self.brands[a]
+        a, b = self.brands.index('LTD'), self.brands.index('ESP')
+        self.brands[a], self.brands[b] = self.brands[b], self.brands[a]
 
         # read brand specific data
         self.series = {}
         self.series_synonyms = {}
         self.models = {}
-        unique_brands = set([b.lower() if not b in self.brand_synonyms
+        self.ollama_identifiers = {}
+        unique_brands = set([b if not b in self.brand_synonyms
                              else self.brand_synonyms[b].lower() for b in self.brands])
 
         for brand in unique_brands:
             try:
-                with open(f"{data_path}/{brand}_data.json") as f:
+                with open(f"{data_path}/{brand.lower()}_data.json") as f:
                     d = json.load(f)
                     self.series[brand] = d["series"]
                     self.series_synonyms[brand] = d["series_synonyms"]
                     self.models[brand] = d["models"]
+                    self.ollama_identifiers[brand] = identifiers.get(brand, make_data=d)
 
             except FileNotFoundError:
                 print("No data for brand: ", brand)
@@ -58,3 +64,6 @@ class GuitarIdentifier():
                 return b
 
         return None
+
+    def get_ollama_label(self, make: str, string: str) -> json:
+        return self.ollama_identifiers[make].get_label(string)

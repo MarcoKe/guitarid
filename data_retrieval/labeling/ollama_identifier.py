@@ -3,119 +3,131 @@ import requests
 import ollama
 from bs4 import BeautifulSoup
 
-system_prompt_path = "data_retrieval/labeling/ollama_system_prompt_ibanez.txt"
-valid_series_path = "data_retrieval/labeling/valid_series_ibanez.txt"
 ollama_model = "llama3.1"
+brands_path = "data_retrieval/brand_data/brands.json"
 
 
-with open(system_prompt_path, "r") as f:
-    system_prompt = f.read()
+class ObjectFactory:
+    def __init__(self):
+        self._builders = {}
 
-with open(valid_series_path, "r") as f:
-    valid_series = f.read()
+    def register_builder(self, key, builder):
+        self._builders[key] = builder
 
+    def create(self, key, **kwargs):
+        builder = self._builders.get(key)
+        if not builder:
+            raise ValueError(key)
+        return builder(**kwargs)
 
-def parse_json(string: str) -> json:
-    string = string.replace("'", "\"")
-    json_resp = string
-    json_resp = "{" + "{".join(json_resp.split("{")[1:])
-    json_resp = "}".join(json_resp.split("}")[:-1]) + "}"
-
-    return json.loads(json_resp)
-
-
-def get_llm_response(text: str) -> json:
-    response = ollama.chat(model=ollama_model, messages=[
-        {
-            "role": "user",
-            "content": system_prompt + text,
-            "format": "json",
-            "stream": False,
-            "options": {"temperature": 1.0}
-        }
-    ])
-
-    # LLM tends to return one of several variations, sometimes pure json, sometimes quotation marks in the beginning
-    # In the following, everything before and after the actual json is discarded
-    return parse_json(response['message']['content'])
+    def get(self, key, **kwargs):
+        return self.create(key, **kwargs)
 
 
-def exists_in_wiki(guitar_model: str) -> bool:
-    """
-    checks whether the identified model exists in the ibanez fandom wiki. if the returned html contains the div class
-    `noarticletext`, then no article is present for the given model and its existence hence unlikely
-    :param guitar_model: identified guitar model
-    :return: whether it exists in the fandom wiki
-    """
-    url = f"https://ibanez.fandom.com/wiki/{guitar_model}"
-    r = requests.get(url)
-    return "noarticletext" not in r.text
+class OllamaIdentifier:
+    def __init__(self, make_data: dict):
+        self.make_data = make_data
+
+    def parse_json(self, string: str) -> json:
+        string = string.replace("'", "\"")
+        json_resp = string
+        json_resp = "{" + "{".join(json_resp.split("{")[1:])
+        json_resp = "}".join(json_resp.split("}")[:-1]) + "}"
+
+        return json.loads(json_resp)
+
+    def get_llm_response(self, text: str) -> json:
+        response = ollama.chat(model=ollama_model, messages=[
+            {
+                "role": "user",
+                "content": self.make_data["labeling_prompt"] + text,
+                "format": "json",
+                "stream": False,
+                "options": {"temperature": 1.0}
+            }
+        ])
+
+        print(response)
+        # LLM tends to return one of several variations, sometimes pure json, sometimes quotation marks in the beginning
+        # In the following, everything before and after the actual json is discarded
+        return self.parse_json(response['message']['content'])
+
+    def get_label(self, text: str) -> json or None:
+        """
+        get label from LLM and perform sanity check
+        :param text: text from which to get the label
+        :return: label
+        """
+        label = self.get_llm_response(text)
+
+        return label
+
+class IbanezOllamaIdentifier(OllamaIdentifier):
+    def exists_in_wiki(self, guitar_model: str) -> bool:
+        """
+        checks whether the identified model exists in the ibanez fandom wiki. if the returned html contains the div class
+        `noarticletext`, then no article is present for the given model and its existence hence unlikely
+        :param guitar_model: identified guitar model
+        :return: whether it exists in the fandom wiki
+        """
+        url = f"https://ibanez.fandom.com/wiki/{guitar_model}"
+        r = requests.get(url)
+        return "noarticletext" not in r.text
 
 
-def refine_series(guitar_model: str):
-    url = f"https://ibanez.fandom.com/wiki/{guitar_model}"
-    r = requests.get(url)
+    def refine_series(self, guitar_model: str, brand_data):
+        url = f"https://ibanez.fandom.com/wiki/{guitar_model}"
+        r = requests.get(url)
 
-    soup = BeautifulSoup(r.text, "lxml")
-    descr = soup.find("meta", property="og:description")
+        soup = BeautifulSoup(r.text, "lxml")
+        descr = soup.find("meta", property="og:description")
 
-    response = ollama.chat(model=ollama_model, messages=[
-        {
-            "role": "user",
-            "content": "What is the series of the guitar model according to the following text? Valid Series are: " +
-                       valid_series + " \n Here is the text: " + descr["content"] + "\n Respond in json from according to"
-                       "the following schema: {'series': 'the series you found out'}. Give only the json as a response, nothing else.",
-            "format": "json",
-            "stream": False,
-            "options": {"temperature": 1.0}
-        }
-    ])
+        response = ollama.chat(model=ollama_model, messages=[
+            {
+                "role": "user",
+                "content": self.make_data["series_confirmation_prompt"] + descr["content"],
+                "format": "json",
+                "stream": False,
+                "options": {"temperature": 1.0}
+            }
+        ])
 
-    return parse_json(response['message']['content'])['series']
+        return self.parse_json(response['message']['content'])['series']
 
 
-def get_label(text: str) -> json or None:
-    """
-    get label from LLM and perform sanity check
-    :param text: text from which to get the label
-    :return: label
-    """
-    label = get_llm_response(text)
-    label['model'] = label['model'].upper()
-
-    # sanity check
-    if not exists_in_wiki(label['model']):
-        label = get_llm_response(text)
+    def get_label(self, text: str) -> json or None:
+        """
+        get label from LLM and perform sanity check
+        :param text: text from which to get the label
+        :return: label
+        """
+        label = self.get_llm_response(text)
         label['model'] = label['model'].upper()
 
-        if not exists_in_wiki(label['model']):
-            return None # give up after trying twice
+        # sanity check
+        if not self.exists_in_wiki(label['model']):
+            label = self.get_llm_response(text)
+            label['model'] = label['model'].upper()
 
-    # if the identified series does not exist in the wiki, try extracting it from model page of the wiki
-    if not exists_in_wiki(label['series']):
-        label['series'] = refine_series(label['model'])
-        if not exists_in_wiki(label['series']):
-            label['series'] = None
+            if not self.exists_in_wiki(label['model']):
+                return None # give up after trying twice
 
-    return label
+        # if the identified series does not exist in the wiki, try extracting it from model page of the wiki
+        if not self.exists_in_wiki(label['series']):
+            label['series'] = self.refine_series(label['model'])
+            if not self.exists_in_wiki(label['series']):
+                label['series'] = None
 
-#
-# prompt = 'Ibanez SEW761FM-NTF Standard 2024 - Natural Flat '
-# label = get_label(prompt)
-# print(label)
+        return label
 
 
-# prompt = 'Ibanez AF95-DA Artcore Express. 6-Str Dark Amber 2024'
-# label = get_llm_label(prompt)
-# print(label)
-# print(exists_in_wiki(label['model']))
-#
-# prompt = 'Ibanez RG370DX with a nice hat'
-# label = get_llm_label(prompt)
-# print(label)
-# print(exists_in_wiki(label['model']))
-#
-# prompt = 'Ibanez RG1451 in white with a turqoise pickguard'
-# label = get_llm_label(prompt)
-# print(label)
-# print(exists_in_wiki(label['model']))
+identifiers = ObjectFactory()
+
+with open(brands_path, "r") as f:
+    brands = json.load(f)
+
+for brand in brands["brands"]: # set default identifier for all brands
+    identifiers.register_builder(brand, OllamaIdentifier)
+
+# overwrite individualised identifiers:
+identifiers.register_builder("Ibanez", IbanezOllamaIdentifier)
