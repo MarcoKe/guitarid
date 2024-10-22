@@ -9,8 +9,8 @@ with open("credentials.json") as f:
 
 def find_images(query):
     # replace with your own CSE ID and API key
-    cse_id = credentials['cse_id']
-    api_key = credentials['api_key']
+    cse_id = credentials["google"]["cse_id"]
+    api_key = credentials["google"]["api_key"]
 
     # 1, 11, 21, 31, 41, 51, 61, 71, 81, 91
     for i in range(10):
@@ -71,6 +71,6 @@ def save_images(query):
                 print(f"couldnt get {item['link']}")
 
 
-query = "Jackson Soloist SL2"
+query = "Ibanez S6570SK"
 find_images(query)
 save_images(query)
