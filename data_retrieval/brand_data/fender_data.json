@@ -1,7 +1,6 @@
 {
   "make": "Fender",
   "models": [
-    [
       "Custom Shop",
       "Artist Series",
       "Vintage MIJ / CIJ",
@@ -73,7 +72,6 @@
       "Big Apple",
       "The Game Of Thrones Sigil Collection",
       "Ultra"
-    ]
   ],
   "series": [
     "Stratocaster",
@@ -122,7 +120,7 @@
     "Unspecified"
   ],
   "series_synonyms": {},
-  "labeling_prompt": "The guitar manufacturer Fender produces a number of different guitar models in different series. The models are: {models} \n while the series are: {series} \n If you cannot recognize the series or the model, just say 'unknown'.\n\nYour Task: Given a string such as 'Fender American Ultra Stratocaster in Pearl White', tell me the make, series, and model of the guitar. If possible, tell me the color of the finish as well. Do NOT include the finish as part of the model name. I repeat, do not. Format your answer as a json dictionary. Give me only the answer as a json object for the problem I'm giving you. Do not give me any kind of general purpose solution. For the example above, the correct answer would be: {'make': 'Fender', 'series': 'Stratocaster', 'model': 'American Ultra', 'finish': 'Pearl White'}\n\nGive me the solution for the following string:"
+  "labeling_prompt": "The guitar manufacturer Fender produces a number of different guitar models in different series. The models are: {models} \n while the series are: {series} \n Use only the given models and series. If you cannot recognize the series or the model, just say 'unknown'.\n\nYour Task: Given a string such as 'Fender American Ultra Stratocaster in Pearl White', tell me the make, series, and model of the guitar. If possible, tell me the color of the finish as well. Do NOT include the finish as part of the model name. I repeat, do not. Format your answer as a json dictionary. Give me only the answer as a json object for the problem I'm giving you. Do not give me any kind of general purpose solution. Do not use any kind of quotation marks, apostrophes or other special characters within the jason fields. For the example above, the correct answer would be: {\"make\": \"Fender\", \"series\": \"Stratocaster\", \"model\": \"American Ultra\", \"finish\": \"Pearl White\"}\n\nGive me the solution for the following string:"
 
 
 

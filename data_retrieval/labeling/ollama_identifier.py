@@ -31,19 +31,26 @@ class OllamaIdentifier:
     def parse_json(self, string: str) -> json:
         # LLM tends to return one of several variations, sometimes pure json, sometimes quotation marks in the beginning
         # In the following, everything before and after the actual json is discarded
-        string = string.replace("\'", "") # this character is unnecessary and can cause problems
-        string = string.replace("'", "\"")
+        # string = string.replace("'", "\"")
         json_resp = string
         json_resp = "{" + "{".join(json_resp.split("{")[1:])
         json_resp = "}".join(json_resp.split("}")[:-1]) + "}"
 
-        return json.loads(json_resp)
+        try:
+            return json.loads(json_resp)
+        except:
+            return None
 
     def get_llm_response(self, text: str) -> json:
+        prompt = self.make_data["labeling_prompt"]
+        prompt = prompt.replace("{series}", " \n ".join(self.make_data["series"]))
+        prompt = prompt.replace("{models}", " \n ".join(self.make_data["models"]))
+        prompt += text
+
         response = ollama.chat(model=ollama_model, messages=[
             {
                 "role": "user",
-                "content": self.make_data["labeling_prompt"] + text,
+                "content": prompt,
                 "format": "json",
                 "stream": False,
                 "options": {"temperature": 1.0}
@@ -83,10 +90,15 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
         soup = BeautifulSoup(r.text, "lxml")
         descr = soup.find("meta", property="og:description")
 
+        prompt = self.make_data["series_confirmation_prompt"]
+        prompt = prompt.replace("{series}", " \n ".join(self.make_data["series"]))
+        prompt = prompt.replace("{models}", " \n ".join(self.make_data["models"]))
+        prompt += descr["content"]
+
         response = ollama.chat(model=ollama_model, messages=[
             {
                 "role": "user",
-                "content": self.make_data["series_confirmation_prompt"] + descr["content"],
+                "content": prompt,
                 "format": "json",
                 "stream": False,
                 "options": {"temperature": 1.0}
