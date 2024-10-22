@@ -1,0 +1,43 @@
+{
+  "brands": [
+    "Ibanez",
+    "Fender",
+    "Gibson",
+    "PRS",
+    "Jackson",
+    "Music Man",
+    "Squier",
+    "Fender Squier",
+    "Fernandes",
+    "B.C. Rich",
+    "Caparison",
+    "Chapman",
+    "Charvel",
+    "Cort",
+    "Danelectro",
+    "Dean",
+    "Duesenberg",
+    "Epiphone",
+    "ESP",
+    "LTD",
+    "ESP LTD",
+    "Framus",
+    "Godin",
+    "Gretsch",
+    "Hagström",
+    "Harley Benton",
+    "Höfner",
+    "Hohner",
+    "Kiesel",
+    "Kramer",
+    "Mayones",
+    "Schecter",
+    "Stagg",
+    "Suhr",
+    "Yamaha"
+  ],
+  "synonyms": {
+    "Fender Squier": "Squier",
+    "ESP LTD": "LTD"
+  }
+}
