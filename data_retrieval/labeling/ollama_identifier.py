@@ -29,6 +29,9 @@ class OllamaIdentifier:
         self.make_data = make_data
 
     def parse_json(self, string: str) -> json:
+        # LLM tends to return one of several variations, sometimes pure json, sometimes quotation marks in the beginning
+        # In the following, everything before and after the actual json is discarded
+        string = string.replace("\'", "") # this character is unnecessary and can cause problems
         string = string.replace("'", "\"")
         json_resp = string
         json_resp = "{" + "{".join(json_resp.split("{")[1:])
@@ -48,8 +51,6 @@ class OllamaIdentifier:
         ])
 
         print(response)
-        # LLM tends to return one of several variations, sometimes pure json, sometimes quotation marks in the beginning
-        # In the following, everything before and after the actual json is discarded
         return self.parse_json(response['message']['content'])
 
     def get_label(self, text: str) -> json or None:
