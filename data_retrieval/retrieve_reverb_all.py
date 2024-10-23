@@ -13,7 +13,7 @@ img_path = "data_retrieval/reverb/img/all"
 
 
 def retrieve_data():
-    r = requests.get(f"https://api.reverb.com/api/listings?query=fender&product_type=electric-guitars", headers=headers)
+    r = requests.get(f"https://api.reverb.com/api/listings?query=gibson&product_type=electric-guitars", headers=headers)
 
     data = r.json()
     links = data["_links"]
@@ -33,6 +33,7 @@ def retrieve_data():
             extract_training_data(data)
         except:
             print("Problem on page ", i)
+            continue
 
 
 def extract_training_data(data):
