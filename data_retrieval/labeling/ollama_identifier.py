@@ -3,7 +3,7 @@ import requests
 import ollama
 from bs4 import BeautifulSoup
 
-ollama_model = "llama3.1"
+ollama_model = "gemma2"
 brands_path = "data_retrieval/brand_data/brands.json"
 
 
