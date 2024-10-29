@@ -77,7 +77,6 @@ def build_db_entry(record):
         else gi.identify_series(make, record["reverb_title"])
 
     if not series and model:
-        print("identifting series from model")
         series = gi.identify_series(make, model)
 
     print(f"reverb title: {record['reverb_title']}")

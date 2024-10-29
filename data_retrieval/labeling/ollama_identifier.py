@@ -57,7 +57,6 @@ class OllamaIdentifier:
             }
         ])
 
-        print(response)
         return self.parse_json(response['message']['content'])
 
     def get_label(self, text: str) -> json or None:
@@ -77,7 +76,6 @@ class OllamaIdentifier:
             self.make_data["models"].append(model)
 
         out_path = "/".join(brands_path.split("/")[:-1]) + "/" + self.make_data["make"].lower() + "_data.json"
-        print("out: ", out_path)
         with open(out_path, "w") as fp:
             json.dump(self.make_data, fp)
 
@@ -143,6 +141,8 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
             label['series'] = self.refine_series(label['model'])
             if not self.exists_in_wiki(label['series']):
                 label['series'] = None
+
+
 
         return label
 
