@@ -97,6 +97,8 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
         soup = BeautifulSoup(r.text, "lxml")
         descr = soup.find("meta", property="og:description")
 
+        if not descr: return None
+
         prompt = self.make_data["series_confirmation_prompt"]
         prompt = prompt.replace("{series}", " \n ".join(self.make_data["series"]))
         prompt = prompt.replace("{models}", " \n ".join(self.make_data["models"]))
