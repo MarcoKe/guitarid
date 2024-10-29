@@ -40,7 +40,7 @@ def create_tables(db):
                 make TEXT, 
                 series TEXT,
                 model TEXT,
-                img_path TEXT);"""]
+                label_quality TEXT);"""]
 
     # create a database connection
     try:
@@ -56,7 +56,7 @@ def create_tables(db):
 
 
 def add_guitar(conn, guitar):
-    sql = ''' INSERT OR IGNORE INTO guitars(reverb_id, reverb_make, reverb_model, reverb_finish, reverb_year, reverb_title, reverb_descr, reverb_condition, reverb_category, reverb_price, make, series, model, img_path)
+    sql = ''' INSERT OR IGNORE INTO guitars(reverb_id, reverb_make, reverb_model, reverb_finish, reverb_year, reverb_title, reverb_descr, reverb_condition, reverb_category, reverb_price, make, series, model, label_quality)
               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, ?) '''
     cur = conn.cursor()
     cur.execute(sql, guitar)
@@ -78,7 +78,7 @@ def build_db_entry(record):
     #         else gi.identify_model(make, record['title'])
 
 
-    img_path = f"{make}_{series}_{model}/{record['reverb_id']}.jpg"
+    label_quality = "unassessed"
 
     guitar = (record['reverb_id'],
               record['reverb_make'],
@@ -93,9 +93,27 @@ def build_db_entry(record):
               make,
               series,
               model,
-              img_path)
+              label_quality)
 
     return guitar
+
+
+def remove_processed_items():
+    """
+    Removes all rows from the staging database whose reverb_ids are already present in the processed database
+    """
+    with sqlite3.connect(unprocessed_db) as conn_unprocessed:
+        deletion_cursor = conn_unprocessed.cursor()
+
+        with sqlite3.connect(db) as conn:
+            conn.row_factory = sqlite3.Row
+            reading_cursor = conn.cursor()
+            reading_cursor.execute("SELECT * FROM guitars")
+
+            for row in reading_cursor:
+                deletion_cursor.execute("DELETE FROM guitars WHERE reverb_id = ?", (row["reverb_id"],))
+
+        conn_unprocessed.commit()
 
 
 def process_items(query=""):
@@ -104,7 +122,7 @@ def process_items(query=""):
     with sqlite3.connect(unprocessed_db) as conn_unprocessed:
         conn_unprocessed.row_factory = sqlite3.Row
         reading_cursor = conn_unprocessed.cursor()
-        reading_cursor.execute("SELECT * FROM guitars")
+        reading_cursor.execute("SELECT * FROM guitars WHERE reverb_make = ?", ("Kiesel", ))
         with sqlite3.connect(db) as conn:
             for row in reading_cursor:
                 # save computation time in case of duplicates in the json
@@ -119,7 +137,7 @@ def process_items(query=""):
 
         for id in ids:
             deletion_cursor = conn_unprocessed.cursor()
-            deletion_cursor.execute("DELETE FROM guitars WHERE id = ?", (id,))
+            deletion_cursor.execute("DELETE FROM guitars WHERE reverb_id = ?", (id,))
             conn_unprocessed.commit()
 
 
@@ -129,7 +147,9 @@ def init_db():
 
 
 if __name__ == '__main__':
+    # init_db()
     process_items()
+    # remove_processed_items()
     # gi = GuitarIdentifier()
     # label = gi.get_ollama_label("Fender", "Fender American Professional II Telecaster with Maple Fretboard Roasted Pine")
     # print("h4: ", label)
