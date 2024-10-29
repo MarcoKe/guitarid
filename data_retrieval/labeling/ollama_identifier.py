@@ -31,7 +31,7 @@ class OllamaIdentifier:
     def parse_json(self, string: str) -> json:
         # LLM tends to return one of several variations, sometimes pure json, sometimes quotation marks in the beginning
         # In the following, everything before and after the actual json is discarded
-        # string = string.replace("'", "\"")
+        # string = string.replace(""", "\"")
         json_resp = string
         json_resp = "{" + "{".join(json_resp.split("{")[1:])
         json_resp = "}".join(json_resp.split("}")[:-1]) + "}"
@@ -57,7 +57,7 @@ class OllamaIdentifier:
             }
         ])
 
-        return self.parse_json(response['message']['content'])
+        return self.parse_json(response["message"]["content"])
 
     def get_label(self, text: str) -> json or None:
         """
@@ -69,15 +69,13 @@ class OllamaIdentifier:
 
         return label
 
-    def update_brand_data(self, series: str = None, model: str = None):
-        if series:
-            self.make_data["series"].append(series)
-        if model:
+    def update_model_data(self, model: str):
+        if model.lower() not in [e.lower() for e in self.make_data["models"]]:
             self.make_data["models"].append(model)
 
-        out_path = "/".join(brands_path.split("/")[:-1]) + "/" + self.make_data["make"].lower() + "_data.json"
-        with open(out_path, "w") as fp:
-            json.dump(self.make_data, fp)
+            out_path = "/".join(brands_path.split("/")[:-1]) + "/" + self.make_data["make"].lower() + "_data.json"
+            with open(out_path, "w") as fp:
+                json.dump(self.make_data, fp)
 
 
 class IbanezOllamaIdentifier(OllamaIdentifier):
@@ -91,7 +89,6 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
         url = f"https://ibanez.fandom.com/wiki/{guitar_model}"
         r = requests.get(url)
         return "noarticletext" not in r.text
-
 
     def refine_series(self, guitar_model: str):
         url = f"https://ibanez.fandom.com/wiki/{guitar_model}"
@@ -115,7 +112,10 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
             }
         ])
 
-        return self.parse_json(response['message']['content'])['series']
+        return self.parse_json(response["message"]["content"])["series"]
+
+    def valid_model(self, model):
+        return self.exists_in_wiki(model) and (model.lower() not in [s.lower() for s in self.make_data["series"]])
 
     def get_label(self, text: str) -> json or None:
         """
@@ -124,25 +124,23 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
         :return: label
         """
         label = self.get_llm_response(text)
-        label['model'] = label['model'].upper()
+        label["model"] = label["model"].upper()
 
         # sanity check
-        if not self.exists_in_wiki(label['model']):
+        if not self.valid_model(label["model"]):
             label = self.get_llm_response(text)
-            label['model'] = label['model'].upper()
+            label["model"] = label["model"].upper()
 
-            if not self.exists_in_wiki(label['model']):
+            if not self.valid_model(label["model"]):
                 return None # give up after trying twice
 
-        self.update_brand_data(model=label["model"])
+        self.update_model_data(label["model"])
 
         # if the identified series does not exist in the wiki, try extracting it from model page of the wiki
-        if not self.exists_in_wiki(label['series']):
-            label['series'] = self.refine_series(label['model'])
-            if not self.exists_in_wiki(label['series']):
-                label['series'] = None
-
-
+        if not self.exists_in_wiki(label["series"]):
+            label["series"] = self.refine_series(label["model"])
+            if not self.exists_in_wiki(label["series"]):
+                label["series"] = None
 
         return label
 
