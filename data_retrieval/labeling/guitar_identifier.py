@@ -1,7 +1,8 @@
 import json
 from data_retrieval.labeling.ollama_identifier import identifiers
 
-class GuitarIdentifier():
+
+class GuitarIdentifier:
     def __init__(self, data_path = "data_retrieval/brand_data"):
         # read general brand data
         with open(f"{data_path}/brands.json") as f:
@@ -25,6 +26,9 @@ class GuitarIdentifier():
             try:
                 with open(f"{data_path}/{brand.lower()}_data.json") as f:
                     d = json.load(f)
+                    d["series"].sort(key=lambda x: -len(x))
+                    d["models"].sort(key=lambda x: -len(x))
+
                     self.series[brand] = d["series"]
                     self.series_synonyms[brand] = d["series_synonyms"]
                     self.models[brand] = d["models"]
@@ -44,8 +48,8 @@ class GuitarIdentifier():
 
         for s in self.series[make]:
             if s.lower() in model.lower():
-                if s in self.synonyms[make]:
-                    return self.synonyms[make][s]
+                if s in self.series_synonyms[make]:
+                    return self.series_synonyms[make][s]
                 return s
 
         return None

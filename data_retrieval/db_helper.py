@@ -1,3 +1,5 @@
+import json
+
 import ijson
 
 from data_retrieval.labeling.guitar_identifier import GuitarIdentifier
@@ -141,6 +143,72 @@ def process_items(query=""):
             conn_unprocessed.commit()
 
 
+def postprocess_items():
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("UPDATE guitars SET series=? WHERE series=?", ("unknown", "UNKNOWN",))
+        cursor.execute("UPDATE guitars SET series=? WHERE series=?", ("unknown", "Unknown",))
+
+
+        makes = [r["make"] for r in cursor.execute("SELECT DISTINCT make FROM guitars").fetchall()]
+
+        for make in makes:
+            series = cursor.execute("SELECT DISTINCT series FROM guitars WHERE make = ?", (make,))
+            series = [r["series"] for r in series.fetchall()]
+            print(make, ": ", series)
+            print(len(series), len(set([s.lower() for s in series])))
+
+            with open(f"data_retrieval/brand_data/{make}_data.json") as fp:
+                brand_data = json.load(fp)
+
+            # find series that deviate from master list series
+            for s in series:
+                if s not in brand_data["series"]:
+                    if s.lower() == "unknown":
+                        continue
+
+                    # wrong lower / upper case
+                    corrected = correct_case(cursor, s, brand_data)
+                    if corrected: continue
+
+                    # find closest match based on master data
+                    corrected = correct_closest_match(cursor, s, brand_data)
+                    if corrected: continue
+
+                    # no successful (mass) correction possible. try individual correction
+                    # or wait for master data update and try again
+                    cursor.execute("UPDATE guitars SET label_quality=? WHERE series=?", ("suspect", s,))
+
+
+def correct_case(cursor, current_series, brand_data):
+    if current_series.lower() in [el.lower() for el in brand_data["series"]]:
+        corrected_series = [el for el in brand_data["series"] if current_series.lower() == el.lower()]
+        if len(corrected_series) > 1:
+            print(f"Case problem in master list of {brand_data['make']}: {corrected_series}")
+        else:
+            corrected_series = corrected_series[0]
+            cursor.execute("UPDATE guitars SET series=? WHERE series=?", (corrected_series, current_series, ))
+
+        return True
+
+    return False
+
+
+def correct_closest_match(cursor, current_series, brand_data):
+    candidates = [c for c in brand_data["series"] if c.lower() in current_series.lower()]
+
+    # remove candidates which are substrings of another candidate
+    candidates = [s for s in candidates if len(list(filter(lambda x: s in x, candidates))) == 1]
+
+    if len(candidates) != 1:
+        return False
+    else:
+        corrected_series = candidates[0]
+        cursor.execute("UPDATE guitars SET series=? WHERE series=?", (corrected_series, current_series, ))
+        return True
+
+
 def init_db():
     create_sqlite_database(db)
     create_tables(db)
@@ -148,7 +216,8 @@ def init_db():
 
 if __name__ == '__main__':
     # init_db()
-    process_items()
+    # process_items()
+    postprocess_items()
     # remove_processed_items()
     # gi = GuitarIdentifier()
     # label = gi.get_ollama_label("Fender", "Fender American Professional II Telecaster with Maple Fretboard Roasted Pine")
