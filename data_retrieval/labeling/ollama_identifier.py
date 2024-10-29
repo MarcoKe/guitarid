@@ -70,6 +70,18 @@ class OllamaIdentifier:
 
         return label
 
+    def update_brand_data(self, series: str = None, model: str = None):
+        if series:
+            self.make_data["series"].append(series)
+        if model:
+            self.make_data["models"].append(model)
+
+        out_path = "/".join(brands_path.split("/")[:-1]) + "/" + self.make_data["make"].lower() + "_data.json"
+        print("out: ", out_path)
+        with open(out_path, "w") as fp:
+            json.dump(self.make_data, fp)
+
+
 class IbanezOllamaIdentifier(OllamaIdentifier):
     def exists_in_wiki(self, guitar_model: str) -> bool:
         """
@@ -107,7 +119,6 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
 
         return self.parse_json(response['message']['content'])['series']
 
-
     def get_label(self, text: str) -> json or None:
         """
         get label from LLM and perform sanity check
@@ -124,6 +135,8 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
 
             if not self.exists_in_wiki(label['model']):
                 return None # give up after trying twice
+
+        self.update_brand_data(model=label["model"])
 
         # if the identified series does not exist in the wiki, try extracting it from model page of the wiki
         if not self.exists_in_wiki(label['series']):

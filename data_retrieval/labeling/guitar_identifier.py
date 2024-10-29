@@ -1,4 +1,6 @@
 import json
+from typing import List
+
 from data_retrieval.labeling.ollama_identifier import identifiers
 
 
@@ -37,30 +39,29 @@ class GuitarIdentifier:
             except FileNotFoundError:
                 print("No data for brand: ", brand)
 
-    def identify_series(self, make: str, model:str) -> str or None:
+    def identify_series(self, make: str, string: str) -> str or None:
         """
         identifies a series id based on a predefined list of series
         :param make: series of which make
-        :param model: model number
+        :param string: model number
         :return: series id
         """
-        if not make or not make in self.series: return None
-
-        for s in self.series[make]:
-            if s.lower() in model.lower():
-                if s in self.series_synonyms[make]:
-                    return self.series_synonyms[make][s]
-                return s
-
-        return None
-
-    def identify_model(self, string: str, make: str) -> str or None:
         if not make or not make in self.models: return None
+        candidates = self.get_series_candidates(make, string)
 
-        for m in self.models[make]:
-            if m.lower() in string.lower():
-                return m
-        return None
+        if len(candidates) == 1:
+            return candidates[0]
+        else:
+            return None
+
+    def identify_model(self, make: str, string: str) -> str or None:
+        if not make or not make in self.models: return None
+        candidates = self.get_model_candidates(make, string)
+
+        if len(candidates) == 1:
+            return candidates[0]
+        else:
+            return None
 
     def identify_make(self, string: str) -> str or None:
         for b in self.brands:
@@ -68,6 +69,18 @@ class GuitarIdentifier:
                 return b
 
         return None
+
+    def get_series_candidates(self, make: str, string: str) -> List[str]:
+        return self._get_candidates(self.series[make], string)
+
+    def get_model_candidates(self, make: str, string: str) -> List[str]:
+        return self._get_candidates(self.models[make], string)
+
+    def _get_candidates(self, master, string):
+        candidates = set([c for c in master if c.lower() in string.lower()])
+
+        # remove candidates which are substrings of another candidate
+        return [s for s in candidates if len(list(filter(lambda x: s in x, candidates))) == 1]
 
     def get_ollama_label(self, make: str, string: str) -> json:
         return self.ollama_identifiers[make].get_label(string)

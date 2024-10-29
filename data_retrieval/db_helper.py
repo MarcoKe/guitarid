@@ -69,16 +69,28 @@ def add_guitar(conn, guitar):
 def build_db_entry(record):
     make = gi.identify_make(record['reverb_make']) if gi.identify_make(record['reverb_make']) \
         else gi.identify_make(record['reverb_title'])
-    # if make == "Ibanez":
-    label = gi.get_ollama_label(make, record["reverb_title"])
-    print(record["reverb_title"], "\n", label)
-    series = None if not label else label['series']
-    model = None if not label else label['model']
-    # else:
-    #     series = gi.identify_series(make, record['title'])
-    #     model = gi.identify_model(make, record['model']) if gi.identify_model(make, record['model']) \
-    #         else gi.identify_model(make, record['title'])
 
+    model = gi.identify_model(make, record['reverb_model']) if gi.identify_model(make, record['reverb_model']) \
+        else gi.identify_model(make, record["reverb_title"])
+
+    series = gi.identify_series(make, record['reverb_model']) if gi.identify_series(make, record['reverb_model']) \
+        else gi.identify_series(make, record["reverb_title"])
+
+    if not series and model:
+        print("identifting series from model")
+        series = gi.identify_series(make, model)
+
+    print(f"reverb title: {record['reverb_title']}")
+    print(f"rule-based inference | make: {make}, series: {series}, model: {model}")
+
+    if not series or not model:
+        label = gi.get_ollama_label(make, record["reverb_title"])
+        print(f"llm-based inference | {label}")
+
+        if not series:
+            series = None if not label else label['series']
+        if not model:
+            model = None if not label else label['model']
 
     label_quality = "unassessed"
 
@@ -124,7 +136,7 @@ def process_items(query=""):
     with sqlite3.connect(unprocessed_db) as conn_unprocessed:
         conn_unprocessed.row_factory = sqlite3.Row
         reading_cursor = conn_unprocessed.cursor()
-        reading_cursor.execute("SELECT * FROM guitars WHERE reverb_make = ?", ("Kiesel", ))
+        reading_cursor.execute("SELECT * FROM guitars WHERE reverb_make = ?", ("Ibanez",))
         with sqlite3.connect(db) as conn:
             for row in reading_cursor:
                 # save computation time in case of duplicates in the json
@@ -149,7 +161,6 @@ def postprocess_items():
         cursor = conn.cursor()
         cursor.execute("UPDATE guitars SET series=? WHERE series=?", ("unknown", "UNKNOWN",))
         cursor.execute("UPDATE guitars SET series=? WHERE series=?", ("unknown", "Unknown",))
-
 
         makes = [r["make"] for r in cursor.execute("SELECT DISTINCT make FROM guitars").fetchall()]
 
@@ -188,7 +199,7 @@ def correct_case(cursor, current_series, brand_data):
             print(f"Case problem in master list of {brand_data['make']}: {corrected_series}")
         else:
             corrected_series = corrected_series[0]
-            cursor.execute("UPDATE guitars SET series=? WHERE series=?", (corrected_series, current_series, ))
+            cursor.execute("UPDATE guitars SET series=? WHERE series=?", (corrected_series, current_series,))
 
         return True
 
@@ -196,17 +207,13 @@ def correct_case(cursor, current_series, brand_data):
 
 
 def correct_closest_match(cursor, current_series, brand_data):
-    candidates = [c for c in brand_data["series"] if c.lower() in current_series.lower()]
+    corrected_series = gi.identify_series(brand_data["make"], current_series)
 
-    # remove candidates which are substrings of another candidate
-    candidates = [s for s in candidates if len(list(filter(lambda x: s in x, candidates))) == 1]
-
-    if len(candidates) != 1:
-        return False
-    else:
-        corrected_series = candidates[0]
-        cursor.execute("UPDATE guitars SET series=? WHERE series=?", (corrected_series, current_series, ))
+    if corrected_series:
+        cursor.execute("UPDATE guitars SET series=? WHERE series=?", (corrected_series, current_series,))
         return True
+
+    return False
 
 
 def init_db():
@@ -216,9 +223,10 @@ def init_db():
 
 if __name__ == '__main__':
     # init_db()
-    # process_items()
-    postprocess_items()
+    process_items()
+    # postprocess_items()
     # remove_processed_items()
     # gi = GuitarIdentifier()
+    # print(gi.identify_model("Ibanez", "Ibanez IBANEZ AZES40-TUN E-Gitarre, tungsten"))
     # label = gi.get_ollama_label("Fender", "Fender American Professional II Telecaster with Maple Fretboard Roasted Pine")
     # print("h4: ", label)
