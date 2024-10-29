@@ -13,7 +13,7 @@ img_path = "data_retrieval/reverb/img/all"
 
 
 def retrieve_data():
-    r = requests.get(f"https://api.reverb.com/api/listings?query=gibson&product_type=electric-guitars", headers=headers)
+    r = requests.get(f"https://api.reverb.com/api/listings?query=ibanez&product_type=electric-guitars&per_page=50", headers=headers)
 
     data = r.json()
     links = data["_links"]
@@ -21,19 +21,20 @@ def retrieve_data():
 
     i = 0
     while "next" in links:
-        try:
-            print("scraping page ", i)
-            r = requests.get(links["next"]["href"], headers=headers)
-            data_ = r.json()
-            links = data_["_links"]
-            data["listings"].extend(data_["listings"])
-            i += 1
+        # try:
+        print("scraping page ", i)
+        r = requests.get(links["next"]["href"], headers=headers)
+        data_ = r.json()
+        links = data_["_links"]
+        print(len(data_["listings"]))
+        data["listings"].extend(data_["listings"])
+        i += 1
 
-            # extract relevant data from overall response and save image
-            extract_training_data(data)
-        except:
-            print("Problem on page ", i)
-            continue
+        # extract relevant data from overall response and save image
+        extract_training_data(data)
+        # except:
+        #     print("Problem on page ", i)
+        #     continue
 
 
 def extract_training_data(data):
