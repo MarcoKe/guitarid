@@ -83,7 +83,7 @@ class IbanezOllamaIdentifier(OllamaIdentifier):
         return "noarticletext" not in r.text
 
 
-    def refine_series(self, guitar_model: str, brand_data):
+    def refine_series(self, guitar_model: str):
         url = f"https://ibanez.fandom.com/wiki/{guitar_model}"
         r = requests.get(url)
 
