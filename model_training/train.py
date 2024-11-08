@@ -64,12 +64,16 @@ def train_model(model, criterion, optimizer, dataloaders, num_epochs: int, metri
 
                 for metric in metrics.keys():
                     metrics_values[metric] = metrics[metric].compute()
+                    metrics[metric].reset()
 
                 loss_value = avg_loss.compute()
+                avg_loss.reset()
+
                 if phase == "val" and loss_value < best_loss:
                     torch.save(model.state_dict(), best_model_params_path)
 
                 log_metrics(epoch, phase, metrics_values, loss_value)
+
 
         model.load_state_dict(torch.load(best_model_params_path, weights_only=True))
         return model
@@ -179,7 +183,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters())
 
     # train model
-    model = train_model(model, criterion, optimizer, dataloaders, 20)
+    model = train_model(model, criterion, optimizer, dataloaders, 50)
 
     # save trained model
     save_model(model, "guitarid_model_v0.1.3_mobilenetv3")
