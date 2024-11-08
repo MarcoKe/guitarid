@@ -31,7 +31,7 @@ def train_model(model, criterion, optimizer, dataloaders, num_epochs: int, metri
         torch.save(model.state_dict(), best_model_params_path)
 
         for epoch in range(num_epochs):
-            print(f"Epoch {epoch}/{num_epochs - 1} \n {'-' * 10}")
+            print(f"\n Epoch {epoch}/{num_epochs - 1} \n {'-' * 10}")
 
             for phase in ["train", "val"]:
                 if phase == "train":
@@ -125,7 +125,7 @@ def load_model(num_classes, freeze_weights=True):
     weights = MobileNet_V3_Large_Weights.DEFAULT
     model = models.mobilenet_v3_large(weights=weights)
 
-    # change last layer to accomodate num classes
+    # change last layer to accommodate num classes
     model.classifier[-1] = nn.Sequential(
         nn.Linear(in_features=model.classifier[-1].in_features, out_features=num_classes))
 
@@ -164,7 +164,7 @@ if __name__ == '__main__':
         # track hyperparameters and run metadata
         config={
             "architecture": "mobilenet-v3",
-            "dataset": "reverb_simple",
+            "dataset": data_dir.split("/")[-1],
         }
     )
 
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters())
 
     # train model
-    model = train_model(model, criterion, optimizer, dataloaders,20)
+    model = train_model(model, criterion, optimizer, dataloaders, 20)
 
     # save trained model
     save_model(model, "guitarid_model_v0.1.3_mobilenetv3")
