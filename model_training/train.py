@@ -148,9 +148,10 @@ if __name__ == '__main__':
 
     wandb.init(
         # set the wandb project where this run will be logged
-        project="guitarid",
+        project = "guitarid",
         # track hyperparameters and run metadata
-        config=config
+        config = config,
+        name = f"{config['model_name']}{'' if config['freeze_weights'] else '_unfrozen'}"
     )
 
     # load data / create data loaders
