@@ -9,9 +9,9 @@ import torch.optim as optim
 from sklearn.utils.class_weight import compute_class_weight
 from torcheval.metrics import MulticlassAccuracy, Mean
 from torchvision import datasets, models, transforms
-from torchvision.models import MobileNet_V3_Large_Weights
-
 import wandb
+
+from model_training.model_factory import ModelFactory
 
 
 def train_model(model, criterion, optimizer, dataloaders, num_epochs: int, metrics: dict = None):
@@ -124,27 +124,7 @@ def load_data(data_dir, image_width, norm_coefs):
     return image_datasets, dataloaders, class_names, num_classes, class_weights
 
 
-def load_model(num_classes, freeze_weights=True):
-    # load pre-trained weights
-    weights = MobileNet_V3_Large_Weights.DEFAULT
-    model = models.mobilenet_v3_large(weights=weights)
-
-    # change last layer to accommodate num classes
-    model.classifier[-1] = nn.Sequential(
-        nn.Linear(in_features=model.classifier[-1].in_features, out_features=num_classes))
-
-    # whether to freeze all weights except for the head of the model
-    if freeze_weights:
-        for param in model.parameters():
-            param.requires_grad = False
-
-        for param in model.classifier.parameters():
-            param.requires_grad = True
-
-    return model
-
-
-def save_model(model, name, onnx=True, torchscript=True):
+def save_model(model, name, image_width, onnx=True, torchscript=True):
     if onnx:
         export_onnx(model, image_width, f"{name}.onnx")
 
@@ -154,11 +134,15 @@ def save_model(model, name, onnx=True, torchscript=True):
 
 
 if __name__ == '__main__':
-    data_dir = "datasets/reverb_simple"
-    image_width = 224
-    norm_coefs = {
-        "mean": [0.485, 0.456, 0.406],
-        "std": [0.229, 0.224, 0.225]
+    config = {
+        "model_name": "convnext_tiny",
+        "freeze_weights": False,
+        "data_dir": "datasets/reverb_simple",
+        "image_width": 224,
+        "norm_coefs": {
+            "mean": [0.485, 0.456, 0.406],
+            "std": [0.229, 0.224, 0.225]
+        }
     }
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -166,17 +150,15 @@ if __name__ == '__main__':
         # set the wandb project where this run will be logged
         project="guitarid",
         # track hyperparameters and run metadata
-        config={
-            "architecture": "mobilenet-v3",
-            "dataset": data_dir.split("/")[-1],
-        }
+        config=config
     )
 
     # load data / create data loaders
-    image_datasets, dataloaders, class_names, num_classes, class_weights = load_data(data_dir, image_width, norm_coefs)
+    image_datasets, dataloaders, class_names, num_classes, class_weights = (
+        load_data(config["data_dir"], config["image_width"], config["norm_coefs"]))
 
     # load model
-    model = load_model(num_classes)
+    model = ModelFactory.create_model(config["model_name"], num_classes, config["freeze_weights"])
 
     # define loss and optimizer
     criterion = nn.CrossEntropyLoss(weight=torch.Tensor(class_weights)) # class weighted CEL
@@ -186,7 +168,7 @@ if __name__ == '__main__':
     model = train_model(model, criterion, optimizer, dataloaders, 50)
 
     # save trained model
-    save_model(model, "guitarid_model_v0.1.3_mobilenetv3")
+    save_model(model, f"guitarid_model_v0.1.3_{config['model_name']}", config["image_width"])
 
     # evaluate(model, image_datasets, norm_coefs)
 
