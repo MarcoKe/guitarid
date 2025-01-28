@@ -16,22 +16,31 @@ def add_guitar(conn, guitar):
 
 def process_item(record: json):
     with sqlite3.connect(db) as conn:
-            guitar = (record['id'],
-                      record['make'],
-                      record['model'],
-                      record['finish'],
-                      record['year'],
-                      record['title'],
-                      record['description'],
-                      record['condition'],
-                      record['category'],
-                      record['price']['amount'] + ' ' + record['price']['currency'])
-            add_guitar(conn, guitar)
+        guitar = (record['id'],
+                  record['make'],
+                  record['model'],
+                  record['finish'],
+                  record['year'],
+                  record['title'],
+                  record['description'],
+                  record['condition'],
+                  record['category'],
+                  record['price']['amount'] + ' ' + record['price']['currency'])
+        add_guitar(conn, guitar)
+
+
+def last_item_id(make: str):
+    with sqlite3.connect(db) as conn:
+        cur = conn.cursor()
+        cur.execute(f"SELECT reverb_id FROM guitars WHERE reverb_make = '{make}' ORDER BY id DESC LIMIT 1")
+        return None if not cur.fetchone() else cur.fetchone()[0]
+
 
 def init_db():
     create_sqlite_database(db)
     create_tables(db)
 
-if __name__ == '__main__':
-    init_db()
 
+if __name__ == '__main__':
+    # init_db()
+    print(last_item_id("PRS"))
