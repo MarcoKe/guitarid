@@ -33,7 +33,10 @@ def last_item_id(make: str):
     with sqlite3.connect(db) as conn:
         cur = conn.cursor()
         cur.execute(f"SELECT reverb_id FROM guitars WHERE reverb_make = '{make}' ORDER BY id DESC LIMIT 1")
-        return None if not cur.fetchone() else cur.fetchone()[0]
+
+        res = cur.fetchone()
+
+        return None if not res else res[0]
 
 
 def init_db():
