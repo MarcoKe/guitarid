@@ -7,19 +7,33 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.utils.class_weight import compute_class_weight
-from torcheval.metrics import MulticlassAccuracy, Mean
+from torcheval.metrics import MulticlassAccuracy, MulticlassF1Score, Mean
 from torchvision import datasets, models, transforms
 import wandb
 
 from model_training.model_factory import ModelFactory
 
+config = {
+    "model_name": "regnet_x_800mf",
+    "freeze_weights": False,
+    "data_dir": "datasets/reverb_simple",
+    "image_width": 224,
+    "norm_coefs": {
+        "mean": [0.485, 0.456, 0.406],
+        "std": [0.229, 0.224, 0.225]
+    }
+}
 
 def train_model(model, criterion, optimizer, dataloaders, num_epochs: int, metrics: dict = None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # default to multi class accuracy if no metrics have been specified
     if not metrics:
-        metrics = {"Acc": MulticlassAccuracy(device=device)}
+        metrics = {
+            "Acc": MulticlassAccuracy(device=device),
+            "IndividualAcc": MulticlassAccuracy(average=None, num_classes=len(class_names), device=device),
+            "F1": MulticlassF1Score(device=device)
+        }
     metrics_values = {key: 0 for key in metrics.keys()}
 
     avg_loss = Mean(device=device)
@@ -79,7 +93,15 @@ def train_model(model, criterion, optimizer, dataloaders, num_epochs: int, metri
         return model
 
 
-def log_metrics(epoch, phase, metrics, loss):
+def log_metrics(epoch, phase, metrics_, loss):
+    metrics = {}
+    for key in metrics_.keys():
+        if len(metrics_[key].shape) == 0:
+            metrics[key] = metrics_[key]
+        else:
+            for cl, el in zip(class_names, metrics_[key]):
+                    metrics["val_acc_"+cl] = el
+
     metrics_str = ", ".join([f"{key}: {metrics[key]:.4f}" for key in metrics.keys()])
     print(f"{phase.capitalize()} | Loss: {loss:.4f}, {metrics_str}")
     wandb.log({"epoch": epoch, f"{phase}_loss": loss, **{f"{phase}_{key}": metrics[key] for key in metrics.keys()}})
@@ -112,38 +134,33 @@ def load_data(data_dir, image_width, norm_coefs):
     image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
                                               data_transforms[x])
                       for x in ["train", "val"]}
-    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=128,
-                                                  shuffle=True, num_workers=0)
-                   for x in ["train", "val"]}
-    # dataset_sizes = {x: len(image_datasets[x]) for x in ["train", "val"]}
+
+    print(len(image_datasets["train"]))
     class_names = image_datasets["train"].classes
     num_classes = len(class_names)
     class_weights = compute_class_weight(class_weight="balanced", classes=np.unique(image_datasets["train"].targets),
                                          y=image_datasets["train"].targets)
 
+    import torch.utils.data as data_utils
+    indices = torch.arange(200)
+    image_datasets["train"] = data_utils.Subset(image_datasets["train"], indices)
+
+    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=128, shuffle=True, num_workers=0)
+                   for x in ["train", "val"]}
+
+    wandb.log({"class_names": class_names, "class_weights": class_weights, "training_data_size": len(image_datasets["train"])})
     return image_datasets, dataloaders, class_names, num_classes, class_weights
 
 
 def save_model(model, name, image_width, onnx=True, torchscript=True):
-    if onnx:
-        export_onnx(model, image_width, f"{name}.onnx")
-
     if torchscript:
         model_scripted = torch.jit.script(model)
         model_scripted.save(f"{name}.pt")
+    if onnx:
+        export_onnx(model, image_width, f"{name}.onnx")
 
 
 if __name__ == '__main__':
-    config = {
-        "model_name": "convnext_tiny",
-        "freeze_weights": False,
-        "data_dir": "datasets/reverb_simple",
-        "image_width": 224,
-        "norm_coefs": {
-            "mean": [0.485, 0.456, 0.406],
-            "std": [0.229, 0.224, 0.225]
-        }
-    }
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     wandb.init(
@@ -151,7 +168,7 @@ if __name__ == '__main__':
         project = "guitarid",
         # track hyperparameters and run metadata
         config = config,
-        name = f"{config['model_name']}{'' if config['freeze_weights'] else '_unfrozen'}"
+        name = f"{config['model_name']}{'' if config['freeze_weights'] else '_unfrozen'}_0.5data"
     )
 
     # load data / create data loaders
@@ -166,10 +183,15 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters())
 
     # train model
-    model = train_model(model, criterion, optimizer, dataloaders, 50)
+    model = train_model(model, criterion, optimizer, dataloaders, 15)
 
     # save trained model
     save_model(model, f"guitarid_model_v0.1.3_{config['model_name']}", config["image_width"])
+
+    # save embedding model
+    embedding_model = model
+    embedding_model.classifier = embedding_model.classifier[:-1]
+    save_model(embedding_model, f"guitarid_embedding_model_v0.1.3_{config['model_name']}", config["image_width"])
 
     # evaluate(model, image_datasets, norm_coefs)
 
