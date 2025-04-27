@@ -1,5 +1,6 @@
 import math
 import os
+import random
 from tempfile import TemporaryDirectory
 
 import numpy as np
@@ -10,6 +11,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from torcheval.metrics import MulticlassAccuracy, MulticlassF1Score, Mean
 from torchvision import datasets, models, transforms
 import wandb
+import torch.utils.data as data_utils
 
 from model_training.model_factory import ModelFactory
 
@@ -21,7 +23,8 @@ config = {
     "norm_coefs": {
         "mean": [0.485, 0.456, 0.406],
         "std": [0.229, 0.224, 0.225]
-    }
+    },
+    "train_data_proportion": 1.0
 }
 
 def train_model(model, criterion, optimizer, dataloaders, num_epochs: int, metrics: dict = None):
@@ -107,6 +110,7 @@ def log_metrics(epoch, phase, metrics_, loss):
     wandb.log({"epoch": epoch, f"{phase}_loss": loss, **{f"{phase}_{key}": metrics[key] for key in metrics.keys()}})
 
 
+
 def export_onnx(model, image_width, name):
     model.eval()
     torch_input = torch.randn(1, 3, image_width, image_width)
@@ -135,14 +139,12 @@ def load_data(data_dir, image_width, norm_coefs):
                                               data_transforms[x])
                       for x in ["train", "val"]}
 
-    print(len(image_datasets["train"]))
     class_names = image_datasets["train"].classes
     num_classes = len(class_names)
     class_weights = compute_class_weight(class_weight="balanced", classes=np.unique(image_datasets["train"].targets),
                                          y=image_datasets["train"].targets)
 
-    import torch.utils.data as data_utils
-    indices = torch.arange(200)
+    indices = random.sample(range(0, len(image_datasets["train"])), math.floor(config["train_data_proportion"]*len(image_datasets["train"])))
     image_datasets["train"] = data_utils.Subset(image_datasets["train"], indices)
 
     dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=128, shuffle=True, num_workers=0)
@@ -168,7 +170,7 @@ if __name__ == '__main__':
         project = "guitarid",
         # track hyperparameters and run metadata
         config = config,
-        name = f"{config['model_name']}{'' if config['freeze_weights'] else '_unfrozen'}_0.5data"
+        name = f"{config['model_name']}{'' if config['freeze_weights'] else '_unfrozen'}_{config['train_data_proportion']}data"
     )
 
     # load data / create data loaders
